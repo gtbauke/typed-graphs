@@ -1,3 +1,7 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Graphs (DirectedEdge (..), Graph (..), (-->), vertices, adjacent, Vertex (..)) where
 
 import Data.List (nub)
