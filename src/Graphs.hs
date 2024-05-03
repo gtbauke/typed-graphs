@@ -1,27 +1,61 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ExplicitForAll #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
-module Graphs (DirectedEdge (..), Graph (..), (-->), vertices, adjacent, Vertex (..)) where
+module Graphs where
 
-import Data.List (nub)
+import Data.Kind
+import GHC.TypeLits
 
-newtype Vertex a = Vertex a deriving (Show, Eq)
+type family Every (c :: k -> Constraint) (xs :: [k]) :: Constraint where
+  Every c '[] = ()
+  Every c (x ': xs) = (c x, Every c xs)
 
-data DirectedEdge a = DirectedEdge {from :: Vertex a, to :: Vertex a} deriving (Show, Eq)
+data HList xs where
+  Nil :: HList '[]
+  (:#) :: x -> HList xs -> HList (x ': xs)
 
-(-->) :: a -> a -> DirectedEdge a
-a --> b = DirectedEdge {from = Vertex a, to = Vertex b}
+type CountNeighbors :: xs -> Nat
+type family CountNeighbors ns where
+  CountNeighbors Nil = 0
+  CountNeighbors (g :# gs) = 1 + CountNeighbors gs
 
-newtype Graph a = Graph [DirectedEdge a] deriving (Eq)
+infixr 5 :#
 
-instance (Show a) => Show (Graph a) where
-  show (Graph edges) = unlines $ map show edges
+instance (Every Show xs) => Show (HList xs) where
+  show Nil = ""
+  show (g :# gs) = show g ++ ", " ++ show gs
 
-vertices :: (Eq a) => Graph a -> [Vertex a]
-vertices (Graph edges) = nub $ map from edges ++ map to edges
+type Graph :: Type -> Natural -> Type
+data Graph a n where
+  Graph :: a -> HList xs -> Graph a (CountNeighbors xs)
 
-adjacent :: (Eq a) => Graph a -> Vertex a -> [Vertex a]
-adjacent (Graph edges) vertex =
-  [to edge | edge <- edges, from edge == vertex]
-    ++ [from edge | edge <- edges, to edge == vertex]
+type family If (b :: Bool) (t :: k) (f :: k) :: k where
+  If 'True t f = t
+  If 'False t f = f
+
+type family (==) (a :: k) (b :: k) :: Bool where
+  a == a = 'True
+  a == b = 'False
+
+type family IsEven (n :: Nat) :: Constraint where
+  IsEven n = If (Mod n 2 == 0) (() :: Constraint) (TypeError ('Text "Expected an even number"))
+
+type HasEulerianPath :: xs -> Constraint
+type family HasEulerianPath xs where
+  HasEulerianPath Nil = ()
+  HasEulerianPath (Graph a n :# gs) = (IsEven n, HasEulerianPath gs)
+
+type family HasEulerianPathBool xs where
+  HasEulerianPathBool xs = HasEulerianPath xs ~ (() :: Constraint)
