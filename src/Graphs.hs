@@ -61,10 +61,19 @@ instance (Every Show xs) => Show (HList xs) where
 -- type family HasEulerianPathBool xs where
 --   HasEulerianPathBool xs = HasEulerianPath xs ~ (() :: Constraint)
 
-type Edge :: Symbol -> Symbol -> Type
-data Edge from to = Edge
+type Edge :: Symbol -> Symbol -> Nat -> Type
+data Edge from to weight where
+  Edge :: Edge from to 0
+  WeightedEdge :: Edge from to weight
 
-instance (KnownSymbol from, KnownSymbol to) => Show (Edge from to) where
-  show _ = symbolVal (Proxy @from) ++ " -> " ++ symbolVal (Proxy @to)
+instance (KnownSymbol from, KnownSymbol to, KnownNat weight) => Show (Edge from to weight) where
+  show _ =
+    symbolVal (Proxy @from)
+      ++ " -"
+      ++ (if natVal (Proxy @weight) /= 0 then show (natVal (Proxy @weight)) else "")
+      ++ "-> "
+      ++ symbolVal (Proxy @to)
 
 edges = Edge @"a" @"b" :# Edge @"b" @"c" :# Edge @"c" @"a" :# Nil
+
+weightedEdges = WeightedEdge @"a" @"b" @3 :# WeightedEdge @"b" @"c" @4 :# WeightedEdge @"c" @"a" @5 :# Nil
